@@ -3,7 +3,11 @@ import time
 import os
 import requests
 
-API_URL = os.environ.get("SKYGUARD_API_URL", "http://127.0.0.1:8000/api/v1/detect")
+_raw_url = os.environ.get("SKYGUARD_API_URL", "https://skyguardai.onrender.com")
+if _raw_url.endswith("/api/v1/detect"):
+    API_URL = _raw_url
+else:
+    API_URL = f"{_raw_url.rstrip('/')}/api/v1/detect"
 
 print(f"📡 Starting SkyGuard AWS Telemetry Stream Simulator to {API_URL}...")
 print("Modes simulated sequentially: Nominal -> Thermal Spike -> Flatline Frozen -> Sensor Drift -> Regional Heatwave")

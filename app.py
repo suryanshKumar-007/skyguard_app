@@ -38,7 +38,7 @@ st_autorefresh(interval=10000, key="skyguard_live_refresh")
 # ================================================================
 # 3. FASTAPI BACKEND & LOCAL QC ENGINE
 # ================================================================
-API_BASE_URL = os.environ.get("SKYGUARD_API_URL", "https://skyguard-app-xeak.onrender.com")
+API_BASE_URL = os.environ.get("SKYGUARD_API_URL", "https://skyguardai.onrender.com").rstrip("/")
 LOCAL_API_URL = "http://127.0.0.1:8000"
 LATEST_API_URL = f"{API_BASE_URL}/api/v1/latest"
 
@@ -46,23 +46,37 @@ LATEST_API_URL = f"{API_BASE_URL}/api/v1/latest"
 local_qc_engine = WeatherQCEngine()
 
 
-def fetch_latest_status(base_url=API_BASE_URL):
+def fetch_latest_status(base_url=None):
     """Fetch latest telemetry + anomaly decision from FastAPI microservice."""
     start = time.perf_counter()
-    target_url = f"{base_url}/api/v1/latest"
+    url = (base_url or API_BASE_URL).rstrip("/")
+    target_url = f"{url}/api/v1/latest"
     try:
-        response = requests.get(target_url, timeout=3)
+        response = requests.get(target_url, timeout=4)
         latency_ms = round((time.perf_counter() - start) * 1000, 1)
         if response.status_code != 200:
-            return {"status": "NO_DATA", "_request_latency_ms": latency_ms,
-                    "_error": f"HTTP {response.status_code}", "telemetry": {}, "result": {}}
+            return {
+                "status": "ERROR",
+                "_connected": False,
+                "_request_latency_ms": latency_ms,
+                "_error": f"HTTP {response.status_code}",
+                "telemetry": {},
+                "result": {},
+            }
         data = response.json()
         data["_request_latency_ms"] = latency_ms
+        data["_connected"] = True
         return data
     except Exception as e:
         latency_ms = round((time.perf_counter() - start) * 1000, 1)
-        return {"status": "NO_DATA", "_request_latency_ms": latency_ms,
-                "_error": str(e), "telemetry": {}, "result": {}}
+        return {
+            "status": "NO_DATA",
+            "_connected": False,
+            "_request_latency_ms": latency_ms,
+            "_error": str(e),
+            "telemetry": {},
+            "result": {},
+        }
 
 
 # ================================================================
@@ -942,10 +956,13 @@ with st.sidebar.expander("Microservice Connection", expanded=False):
     api_url_input = st.text_input("API URL", value=API_BASE_URL)
     if st.button("Ping Endpoint", use_container_width=True):
         res = fetch_latest_status(api_url_input)
-        if res.get("status") != "NO_DATA":
-            st.success(f"Connected ({res.get('_request_latency_ms', 0)} ms)")
+        if res.get("_connected", False):
+            if res.get("status") == "NO_DATA":
+                st.success(f"Backend Online ({res.get('_request_latency_ms', 0)} ms) — Ready for Sensor Ingestion")
+            else:
+                st.success(f"Connected ({res.get('_request_latency_ms', 0)} ms) — Ingesting Live Telemetry")
         else:
-            st.error(f"Failed: {res.get('_error', 'Timeout')}")
+            st.error(f"Failed: {res.get('_error', 'Connection timed out')}")
 
 st.sidebar.markdown('<div class="sg-sidebar-sec-label">Fleet Surveillance Summary</div>', unsafe_allow_html=True)
 fleet_placeholder = st.sidebar.empty()
@@ -1028,20 +1045,29 @@ request_latency_ms = 3.6
 backend_available = True
 
 if use_live_backend:
-    live_data = fetch_latest_status()
-    backend_available = (live_data.get("status") != "NO_DATA")
+    live_data = fetch_latest_status(api_url_input)
+    backend_available = live_data.get("_connected", False)
     request_latency_ms = live_data.get("_request_latency_ms", 3.6)
+    if backend_available and not is_fault_sim and not is_extreme_event:
+        b_tel = live_data.get("telemetry", {})
+        if b_tel and "temperature" in b_tel:
+            latest_temp = float(b_tel.get("temperature", latest_temp))
+            latest_hum = float(b_tel.get("humidity", latest_hum))
+            latest_pres = float(b_tel.get("pressure", latest_pres))
 
-# Execute evaluation through WeatherQCEngine
-qc_decision = local_qc_engine.evaluate(
-    station_id=selected_station_id,
-    temperature=latest_temp,
-    humidity=latest_hum,
-    pressure=latest_pres,
-    temp_history=telemetry_df["temperature"].tolist(),
-    peer_temp_readings=peer_temps,
-    is_extreme_scenario=is_extreme_event
-)
+# Execute evaluation through WeatherQCEngine (or take live backend evaluation if connected)
+if use_live_backend and backend_available and not is_fault_sim and not is_extreme_event and live_data.get("result"):
+    qc_decision = live_data["result"]
+else:
+    qc_decision = local_qc_engine.evaluate(
+        station_id=selected_station_id,
+        temperature=latest_temp,
+        humidity=latest_hum,
+        pressure=latest_pres,
+        temp_history=telemetry_df["temperature"].tolist(),
+        peer_temp_readings=peer_temps,
+        is_extreme_scenario=is_extreme_event
+    )
 
 is_current_fault   = qc_decision["is_sensor_fault"]
 is_extreme_weather = qc_decision["is_extreme_weather"]

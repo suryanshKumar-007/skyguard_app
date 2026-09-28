@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,13 +11,61 @@ app = FastAPI(
     description="Intelligent anomaly detection engine detecting spikes, frozen flatlines, progressive drift, physical violations, and genuine regional extreme weather."
 )
 
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://skyguardapp.streamlit.app")
+
+ALLOWED_ORIGINS = [
+    "https://skyguardapp.streamlit.app",
+    "https://skyguardapp.streamlit.app/",
+    FRONTEND_URL,
+    FRONTEND_URL.rstrip("/"),
+    "http://localhost:8501",
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8501",
+    "http://127.0.0.1:8000",
+    "*",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/")
+def root():
+    """Root endpoint providing service metadata and links."""
+    return {
+        "status": "online",
+        "service": "SkyGuard AI — AWS Quality Control & Anomaly Engine",
+        "version": "1.0.0",
+        "frontend": FRONTEND_URL,
+        "docs": "/docs",
+        "endpoints": {
+            "health": "/health",
+            "detect": "/api/v1/detect",
+            "latest": "/api/v1/latest",
+            "stations": "/api/v1/stations",
+            "scenario": "/api/v1/scenario"
+        }
+    }
+
+
+@app.get("/health")
+def health():
+    """Health check for uptime monitors and deployment verification."""
+    return {
+        "status": "healthy",
+        "service": "skyguard-backend",
+        "qc_engine": "operational",
+        "active_scenario": active_scenario.get("scenario", "nominal"),
+        "stations_monitored": len(station_histories),
+        "frontend_url": FRONTEND_URL
+    }
+
 
 
 class SensorInput(BaseModel):

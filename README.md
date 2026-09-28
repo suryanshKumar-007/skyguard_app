@@ -324,19 +324,19 @@ Production deployment should use real AWS observations and labelled/validated fa
 ### Deployed Backend
 
 ```text
-https://skyguard-app-xeak.onrender.com
+https://skyguardai.onrender.com
 ```
 
 ### Swagger Documentation
 
 ```text
-https://skyguard-app-xeak.onrender.com/docs
+https://skyguardai.onrender.com/docs
 ```
 
 ### OpenAPI
 
 ```text
-https://skyguard-app-xeak.onrender.com/openapi.json
+https://skyguardai.onrender.com/openapi.json
 ```
 
 ### POST `/api/v1/detect`
@@ -384,19 +384,19 @@ This allows the complete pipeline to be demonstrated without physical hardware.
 ### Streamlit Dashboard
 
 ```text
-https://skyguardapp-ykibmzfrwzv4h5ntoufrgx.streamlit.app/
+https://skyguardapp.streamlit.app/
 ```
 
 ### Render Backend
 
 ```text
-https://skyguard-app-xeak.onrender.com
+https://skyguardai.onrender.com
 ```
 
 ### Swagger
 
 ```text
-https://skyguard-app-xeak.onrender.com/docs
+https://skyguardai.onrender.com/docs
 ```
 
 ---
