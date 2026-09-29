@@ -1347,61 +1347,64 @@ if is_current_fault or is_extreme_weather:
     st_insp = "done" if inc_status == "RESOLVED" else ("active" if inc_status == "UNDER_INSPECTION" else "")
     st_res = "done" if inc_status == "RESOLVED" else ""
 
-    panel_html = f"""
-<div class="sg-response-panel {sev_class}">
-  <!-- Top Operator Centric NEXT ACTION Banner -->
-  <div class="sg-next-action-card {sev_class}">
-    <div class="sg-next-action-tag {sev_class}">NEXT ACTION</div>
-    <div class="sg-next-action-text">{inc['next_action']}</div>
-  </div>
+    step_01 = (
+        f'<div class="sg-step {st_detected}">'
+        f'<div class="sg-step-marker">01</div>'
+        f'<div><div>DETECTED</div><div style="font-size:9.5px;color:#64748B;font-family:\'JetBrains Mono\';">{inc["detected_at"]}</div></div>'
+        f'</div>'
+    )
+    div_01_cls = "done" if inc_status != "NEW" else ""
+    div_01 = f'<div class="sg-step-divider {div_01_cls}"></div>'
 
-  <!-- Visual Workflow Stepper -->
-  <div class="sg-stepper">
-    <div class="sg-step {st_detected}">
-      <div class="sg-step-marker">01</div>
-      <div>
-        <div>DETECTED</div>
-        <div style="font-size:9.5px;color:#64748B;font-family:'JetBrains Mono';">{inc['detected_at']}</div>
-      </div>
-    </div>
-    <div class="sg-step-divider {'done' if inc_status != 'NEW' else ''}"></div>
-    
-    <div class="sg-step {'done' if inc_status in ['UNDER_INSPECTION', 'RESOLVED'] else ('critical-active' if inc_status == 'ACKNOWLEDGED' else '')}">
-      <div class="sg-step-marker">02</div>
-      <div>
-        <div>ACKNOWLEDGED</div>
-        <div style="font-size:9.5px;color:#64748B;font-family:'JetBrains Mono';">{inc['acknowledged_at'] if inc['acknowledged_at'] else 'Pending operator'}</div>
-      </div>
-    </div>
-    <div class="sg-step-divider {'done' if inc_status in ['UNDER_INSPECTION', 'RESOLVED'] else ''}"></div>
+    step_02_cls = "done" if inc_status in ["UNDER_INSPECTION", "RESOLVED"] else ("critical-active" if inc_status == "ACKNOWLEDGED" else "")
+    step_02_time = inc["acknowledged_at"] if inc["acknowledged_at"] else "Pending operator"
+    step_02 = (
+        f'<div class="sg-step {step_02_cls}">'
+        f'<div class="sg-step-marker">02</div>'
+        f'<div><div>ACKNOWLEDGED</div><div style="font-size:9.5px;color:#64748B;font-family:\'JetBrains Mono\';">{step_02_time}</div></div>'
+        f'</div>'
+    )
+    div_02_cls = "done" if inc_status in ["UNDER_INSPECTION", "RESOLVED"] else ""
+    div_02 = f'<div class="sg-step-divider {div_02_cls}"></div>'
 
-    <div class="sg-step {'done' if inc_status == 'RESOLVED' else ('active' if inc_status == 'UNDER_INSPECTION' else '')}">
-      <div class="sg-step-marker">03</div>
-      <div>
-        <div>UNDER INSPECTION</div>
-        <div style="font-size:9.5px;color:#64748B;font-family:'JetBrains Mono';">{inc['inspection_started_at'] if inc['inspection_started_at'] else 'Pending verification'}</div>
-      </div>
-    </div>
-    <div class="sg-step-divider {'done' if inc_status == 'RESOLVED' else ''}"></div>
+    step_03_cls = "done" if inc_status == "RESOLVED" else ("active" if inc_status == "UNDER_INSPECTION" else "")
+    step_03_time = inc["inspection_started_at"] if inc["inspection_started_at"] else "Pending verification"
+    step_03 = (
+        f'<div class="sg-step {step_03_cls}">'
+        f'<div class="sg-step-marker">03</div>'
+        f'<div><div>UNDER INSPECTION</div><div style="font-size:9.5px;color:#64748B;font-family:\'JetBrains Mono\';">{step_03_time}</div></div>'
+        f'</div>'
+    )
+    div_03_cls = "done" if inc_status == "RESOLVED" else ""
+    div_03 = f'<div class="sg-step-divider {div_03_cls}"></div>'
 
-    <div class="sg-step {'done' if inc_status == 'RESOLVED' else ''}">
-      <div class="sg-step-marker">04</div>
-      <div>
-        <div>RESOLVED</div>
-        <div style="font-size:9.5px;color:#64748B;font-family:'JetBrains Mono';">{inc['resolved_at'] if inc['resolved_at'] else 'Permanent log'}</div>
-      </div>
-    </div>
-  </div>
-</div>
-"""
+    step_04_cls = "done" if inc_status == "RESOLVED" else ""
+    step_04_time = inc["resolved_at"] if inc["resolved_at"] else "Permanent log"
+    step_04 = (
+        f'<div class="sg-step {step_04_cls}">'
+        f'<div class="sg-step-marker">04</div>'
+        f'<div><div>RESOLVED</div><div style="font-size:9.5px;color:#64748B;font-family:\'JetBrains Mono\';">{step_04_time}</div></div>'
+        f'</div>'
+    )
+
+    stepper_html = f'<div class="sg-stepper">{step_01}{div_01}{step_02}{div_02}{step_03}{div_03}{step_04}</div>'
+
+    panel_html = (
+        f'<div class="sg-response-panel {sev_class}">'
+        f'<div class="sg-next-action-card {sev_class}">'
+        f'<div class="sg-next-action-tag {sev_class}">NEXT ACTION</div>'
+        f'<div class="sg-next-action-text">{inc["next_action"]}</div>'
+        f'</div>'
+        f'{stepper_html}'
+        f'</div>'
+    )
     st.markdown(panel_html, unsafe_allow_html=True)
 
     # Two-Column Operator Decision-Support Interface
     col_resp_diag, col_resp_act = st.columns([1.08, 1.12], gap="medium")
 
     with col_resp_diag:
-        st.markdown(f"""
-<div class="sg-diag-card">
+        st.markdown(f"""<div class="sg-diag-card">
   <div class="sg-diag-title">
     <span>Diagnostic Briefing · {inc['id']}</span>
     <span class="sg-chip-status {inc_status.lower()[:3]}">{inc_status.replace('_', ' ')}</span>
@@ -1416,18 +1419,15 @@ if is_current_fault or is_extreme_weather:
   <div class="sg-diag-row"><span class="sg-diag-key">Detection Engine</span><span class="sg-diag-val">{resp_profile['detection_engine']}</span></div>
   <div class="sg-diag-row"><span class="sg-diag-key">QC Model Confidence</span><span class="sg-diag-val">{confidence_pct}%</span></div>
   <div class="sg-diag-row" style="border-bottom:none;"><span class="sg-diag-key">Severity Level</span><span class="sg-diag-val" style="color:#EF4444;">{resp_profile['severity']}</span></div>
-
   <div class="sg-why-box" style="margin-top:12px;">
     <div class="sg-why-title">WHY THIS MATTERS</div>
     <div class="sg-why-body">{resp_profile['why_this_matters']}</div>
   </div>
-
   <div class="sg-why-box">
     <div class="sg-why-title">WHY THIS ACTION?</div>
     <div class="sg-why-body">{resp_profile['why_this_action']}</div>
   </div>
-</div>
-""", unsafe_allow_html=True)
+</div>""", unsafe_allow_html=True)
 
     with col_resp_act:
         st.markdown(f"""
